@@ -29,6 +29,7 @@ public class GameManager : Singleton<GameManager>
         if (_gameState == newState) return;
 
         _gameState = newState;
+        FiskerEvents.RaiseStateChanged(newState);
         switch (_gameState)
         {
             case GameState.MainMenu:

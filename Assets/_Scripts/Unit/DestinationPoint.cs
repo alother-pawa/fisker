@@ -8,6 +8,9 @@ public class DestinationPoint : MonoBehaviour
     public static DestinationPoint Instance;
     public bool fishIn = false;
     private Collider2D fish;
+
+    /// <summary>The fish currently inside the point, or null.</summary>
+    public Transform CaughtFish => fish != null ? fish.transform : null;
     
     // Start is called before the first frame update
     private void Start()

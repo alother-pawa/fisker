@@ -41,6 +41,7 @@ public class SpearManager : MonoBehaviour
             mousePos.z = 0;
             _destinationPoint.SetPosition(mousePos);
             _smallSpear.Spawn(mousePos);
+            FiskerEvents.RaiseSpearThrown(mousePos);
         }
 
         if (mouseDown)
@@ -57,6 +58,7 @@ public class SpearManager : MonoBehaviour
                 timer = 0;
                 _bigSpear.ReLoad();
                 mouseDown = false;
+                FiskerEvents.RaiseSpearReloaded();
             }
         }
     }

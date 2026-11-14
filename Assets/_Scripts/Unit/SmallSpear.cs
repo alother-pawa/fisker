@@ -31,20 +31,22 @@ public class SmallSpear : MonoBehaviour
         {
             gameObject.SetActive(false);
 
+            Vector3 landing = collision.transform.position;
             if (destinationPoint.fishIn)
             {
+                Transform caught = destinationPoint.CaughtFish;
                 destinationPoint.fishIn = false;
                 destinationPoint.DespawnFish();
                 collision.gameObject.SetActive(false);
                 spearManager.spearLanded = true;
-                Debug.Log("Fish in");
                 GameManager.Instance.Score++;
+                FiskerEvents.RaiseFishCaught(landing, caught);
             }
             else
             {
                 spearManager.spearLanded = true;
                 collision.gameObject.SetActive(false);
-                Debug.Log("Fish out");
+                FiskerEvents.RaiseSpearMissed(landing);
             }
         }
     }
