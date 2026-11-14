@@ -33,7 +33,6 @@ public class GameManager : Singleton<GameManager>
         switch (_gameState)
         {
             case GameState.MainMenu:
-                Debug.Log(PlayerPrefs.GetInt("HighScore", 0));
                 _highScoreText.Text.text = "HIGH SCORE: " + PlayerPrefs.GetInt("HighScore", 0).ToString();
                 _mainMenuCanvas.gameObject.SetActive(true);
                 _gameEnvironment.SetActive(false);
@@ -47,11 +46,13 @@ public class GameManager : Singleton<GameManager>
                 _gameEnvironment.SetActive(true);
                 break;
             case GameState.GameOver:
-                if (_score > PlayerPrefs.GetInt("HighScore", 0))
+                bool newBest = _score > PlayerPrefs.GetInt("HighScore", 0);
+                if (newBest)
                 {
                     PlayerPrefs.SetInt("HighScore", _score);
                 }
-                _endScoreText.Text.text = "SCORE: " + _score.ToString();
+                _endScoreText.Text.text = "SCORE: " + _score.ToString()
+                    + (newBest ? "\n<size=70%><color=#FFD966>NEW HIGH SCORE!</color></size>" : "");
                 _gameOverCanvas.gameObject.SetActive(true);
                 _gameEnvironment.SetActive(false);
                 _inGameCanvas.gameObject.SetActive(false);
@@ -75,7 +76,6 @@ public class GameManager : Singleton<GameManager>
     private void Start()
     {
         _time = _defaultTime;
-        Debug.Log(PlayerPrefs.GetInt("HighScore", 0));
         _highScoreText.Text.text = "HIGH SCORE: " + PlayerPrefs.GetInt("HighScore", 0).ToString();
         ChangeGameState(GameState.MainMenu);
     }
