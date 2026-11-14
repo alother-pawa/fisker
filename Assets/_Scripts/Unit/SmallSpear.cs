@@ -35,7 +35,6 @@ public class SmallSpear : MonoBehaviour
             if (destinationPoint.fishIn)
             {
                 Transform caught = destinationPoint.CaughtFish;
-                destinationPoint.fishIn = false;
                 destinationPoint.DespawnFish();
                 collision.gameObject.SetActive(false);
                 spearManager.spearLanded = true;

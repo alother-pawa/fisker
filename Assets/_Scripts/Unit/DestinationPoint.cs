@@ -6,11 +6,23 @@ using UnityEngine;
 public class DestinationPoint : MonoBehaviour
 {
     public static DestinationPoint Instance;
-    public bool fishIn = false;
-    private Collider2D fish;
+    // Every fish overlapping the point: one fish swimming out must not hide another still inside.
+    private readonly List<Collider2D> fishInside = new List<Collider2D>();
+
+    /// <summary>True while at least one fish is inside the point.</summary>
+    public bool fishIn => Fish != null;
 
     /// <summary>The fish currently inside the point, or null.</summary>
-    public Transform CaughtFish => fish != null ? fish.transform : null;
+    public Transform CaughtFish => Fish != null ? Fish.transform : null;
+
+    private Collider2D Fish
+    {
+        get
+        {
+            fishInside.RemoveAll(f => f == null || !f.gameObject.activeInHierarchy);
+            return fishInside.Count > 0 ? fishInside[fishInside.Count - 1] : null;
+        }
+    }
     
     // Start is called before the first frame update
     private void Start()
@@ -26,15 +38,15 @@ public class DestinationPoint : MonoBehaviour
     }
     public void SetPosition(Vector3 position)
     {
+        fishInside.Clear();
         gameObject.SetActive(true);
         transform.position = position;
     }
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.gameObject.CompareTag("Fish"))
+        if (collision.gameObject.CompareTag("Fish") && !fishInside.Contains(collision))
         {
-            fishIn = true;
-            fish = collision;
+            fishInside.Add(collision);
         }
     }
     //on trigger exit
@@ -42,12 +54,14 @@ public class DestinationPoint : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Fish"))
         {
-            fishIn = false;
-            fish = null;
+            fishInside.Remove(collision);
         }
     }
     public void DespawnFish()
     {
+        var fish = Fish;
+        if (fish == null) return;
+        fishInside.Remove(fish);
         fish.gameObject.SetActive(false);
     }
 }
