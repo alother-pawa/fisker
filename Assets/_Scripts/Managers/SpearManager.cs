@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
+using UnityEngine.InputSystem;
 
 public class SpearManager : MonoBehaviour
 {
@@ -12,6 +12,23 @@ public class SpearManager : MonoBehaviour
     [SerializeField] private DestinationPoint _destinationPoint;
     [SerializeField] private SmallSpear _smallSpear;
     private bool mouseDown = false;
+
+    /// <summary>True when a new spear can be thrown (none is out).</summary>
+    public bool CanThrow => !mouseDown;
+
+    /// <summary>Whether a world point is inside the water a spear can be thrown at.</summary>
+    public bool InThrowZone(Vector3 point) => _fishZone.bounds.Contains(new Vector3(point.x, point.y, _fishZone.bounds.center.z));
+
+    /// <summary>The pointer in world space (z = 0), or null without a mouse.</summary>
+    public static Vector3? PointerWorld()
+    {
+        var mouse = Mouse.current;
+        if (mouse == null || Camera.main == null) return null;
+        Vector3 point = Camera.main.ScreenToWorldPoint(mouse.position.ReadValue());
+        point.z = 0;
+        return point;
+    }
+
     public bool spearLanded = false;
     private float timer = 0;
     private Vector3 mousePos = new Vector3(0, 0, 0);
@@ -24,21 +41,19 @@ public class SpearManager : MonoBehaviour
     }
     private void Update()
     {
-        if (Input.GetMouseButtonDown(0) && !mouseDown)
+        var pointer = PointerWorld();
+        if (pointer.HasValue && Mouse.current.leftButton.wasPressedThisFrame && !mouseDown)
         {
             if(GameManager.Instance.GameState != GameState.InGame) return;
 
-            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            mousePos.z = 0;
-            if (!_fishZone.bounds.Contains(mousePos))
+            Vector3 mousePos = pointer.Value;
+            if (!InThrowZone(mousePos))
             {
                 return;
             }
         
             mouseDown = true;
             _bigSpear.gameObject.SetActive(true);
-            mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            mousePos.z = 0;
             _destinationPoint.SetPosition(mousePos);
             _smallSpear.Spawn(mousePos);
             FiskerEvents.RaiseSpearThrown(mousePos);
