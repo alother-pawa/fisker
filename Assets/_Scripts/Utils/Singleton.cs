@@ -12,7 +12,7 @@ public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
         {
             if (instance == null)
             {
-                instance = FindObjectOfType<T>();
+                instance = FindAnyObjectByType<T>();
                 if (instance == null)
                 {
                     GameObject singletonObject = new GameObject();
