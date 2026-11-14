@@ -22,6 +22,9 @@ public class FeelDirector : MonoBehaviour
     private const int RippleOrder = 1;
     private const int DropletOrder = 45;
     private const int PopupOrder = 49;
+    private const int RevealOrder = 48;
+    // Coloured fish drawn at about the silhouettes' pixel size (theirs: 32 px over 1.6 units).
+    private const int RevealPixelsPerUnit = 16;
     private static readonly Color WaterColor = new Color(0.85f, 0.95f, 1f, 0.95f);
     private static readonly Color WarningColor = new Color(1f, 0.35f, 0.3f);
 
@@ -40,6 +43,8 @@ public class FeelDirector : MonoBehaviour
     private Sprite _ring;
     private readonly List<SpriteRenderer> _sprites = new List<SpriteRenderer>();
     private readonly List<TextMeshPro> _popups = new List<TextMeshPro>();
+    private List<Sprite[]> _reveals;
+    private TMP_FontAsset _font;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Create()
@@ -79,13 +84,16 @@ public class FeelDirector : MonoBehaviour
         var destination = FindAnyObjectByType<DestinationPoint>(FindObjectsInactive.Include);
         var reticle = destination != null ? destination.GetComponentInChildren<SpriteRenderer>(true) : null;
         if (reticle != null) { _reticle = reticle.transform; _reticleScale = _reticle.localScale; }
+        // The pointer's aim is game information, shown with effects on or off.
+        if (reticle != null)
+            AimReticle.Create(reticle.sprite, reticle.transform.lossyScale, FindAnyObjectByType<SpearManager>(FindObjectsInactive.Include));
 
         var bigSpear = FindAnyObjectByType<BigSpear>(FindObjectsInactive.Include);
         var spearModel = bigSpear != null ? bigSpear.GetComponentInChildren<SpriteRenderer>(true) : null;
         if (spearModel != null) { _bigSpear = spearModel.transform; _bigSpearScale = _bigSpear.localScale; }
 
         var score = FindAnyObjectByType<ScoreText>(FindObjectsInactive.Include);
-        if (score != null && score.Text != null) _score = score.Text.transform;
+        if (score != null && score.Text != null) { _score = score.Text.transform; _font = score.Text.font; }
 
         var time = FindAnyObjectByType<TimeText>(FindObjectsInactive.Include);
         if (time != null && time.Text != null) { _time = time.Text; _timeColor = _time.color; }
@@ -200,10 +208,38 @@ public class FeelDirector : MonoBehaviour
             .OnComplete(() => Release(ring));
     }
 
+    /// <summary>
+    /// The caught fish shows its colours: a random coloured fish (Resources/Fish, two-frame strips) pops out where
+    /// the silhouette was, facing the way it swam, flaps and floats up. Falls back to popping the silhouette itself.
+    /// </summary>
     private void FishPop(Transform fish)
     {
         var source = fish.GetComponentInChildren<SpriteRenderer>(true);
         if (source == null || source.sprite == null) return;
+
+        var frames = RandomReveal();
+        if (frames != null)
+        {
+            var reveal = TakeSprite(frames[0], Color.white, RevealOrder);
+            // The silhouette faces along its local up, opposite to the way it swims; the coloured fish face right.
+            reveal.flipX = source.transform.up.x > 0f;
+            var start = source.transform.position;
+            reveal.transform.position = start;
+            reveal.transform.localScale = Vector3.zero;
+            int frame = 0;
+            DOTween.Sequence().SetId(Feel.TweenId)
+                .Append(reveal.transform.DOScale(1.2f, 0.15f).SetEase(Ease.OutBack))
+                .Append(reveal.transform.DOScale(1f, 0.1f))
+                .Join(reveal.transform.DOMove(start + Vector3.up * 0.9f, 0.6f).SetEase(Ease.OutCubic))
+                .Join(DOTween.To(() => 0f, t =>
+                {
+                    int f = (int)(t * 6f) % frames.Length;
+                    if (f != frame) { frame = f; reveal.sprite = frames[f]; }
+                }, 1f, 0.6f).SetEase(Ease.Linear))
+                .Insert(0.5f, reveal.DOFade(0f, 0.25f))
+                .OnComplete(() => Release(reveal));
+            return;
+        }
 
         var copy = TakeSprite(source.sprite, source.color, source.sortingOrder + 2);
         copy.flipX = source.flipX;
@@ -219,6 +255,24 @@ public class FeelDirector : MonoBehaviour
             .Join(copy.transform.DOScale(Vector3.zero, 0.35f).SetEase(Ease.InBack))
             .Join(copy.DOFade(0f, 0.35f))
             .OnComplete(() => Release(copy));
+    }
+
+    private Sprite[] RandomReveal()
+    {
+        if (_reveals == null)
+        {
+            _reveals = new List<Sprite[]>();
+            foreach (var texture in Resources.LoadAll<Texture2D>("Fish"))
+            {
+                int w = texture.width / 2;
+                _reveals.Add(new[]
+                {
+                    Sprite.Create(texture, new Rect(0, 0, w, texture.height), new Vector2(0.5f, 0.5f), RevealPixelsPerUnit),
+                    Sprite.Create(texture, new Rect(w, 0, w, texture.height), new Vector2(0.5f, 0.5f), RevealPixelsPerUnit),
+                });
+            }
+        }
+        return _reveals.Count > 0 ? _reveals[Random.Range(0, _reveals.Count)] : null;
     }
 
     private void Popup(string text, Vector3 point)
@@ -280,6 +334,7 @@ public class FeelDirector : MonoBehaviour
         {
             popup = new GameObject("Popup").AddComponent<TextMeshPro>();
             popup.transform.SetParent(transform, false);
+            if (_font != null) popup.font = _font;
             popup.fontSize = 8f;
             popup.fontStyle = FontStyles.Bold;
             popup.alignment = TextAlignmentOptions.Center;
