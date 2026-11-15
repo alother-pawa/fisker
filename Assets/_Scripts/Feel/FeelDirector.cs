@@ -97,6 +97,10 @@ public class FeelDirector : MonoBehaviour
 
         var time = FindAnyObjectByType<TimeText>(FindObjectsInactive.Include);
         if (time != null && time.Text != null) { _time = time.Text; _timeColor = _time.color; }
+
+        // The HUD texts are left-aligned in wide boxes: punch them from their left edge so they never slide off screen.
+        PivotLeft(_score);
+        if (_time != null) PivotLeft(_time.transform);
     }
 
     private void OnEnable()
@@ -294,6 +298,16 @@ public class FeelDirector : MonoBehaviour
         t.DOKill(true);
         t.DOShakePosition(0.18f, new Vector3(0.15f, 0.15f, 0f), 25, 90f, false, true).SetId(Feel.TweenId)
             .OnKill(() => t.position = _cameraOrigin);
+    }
+
+    /// <summary>Moves a RectTransform's pivot to its left edge without moving it on screen.</summary>
+    private static void PivotLeft(Transform target)
+    {
+        if (!(target is RectTransform rect)) return;
+        var pivot = new Vector2(0f, rect.pivot.y);
+        var shift = (pivot - rect.pivot) * rect.rect.size;
+        rect.pivot = pivot;
+        rect.anchoredPosition += new Vector2(shift.x * rect.localScale.x, shift.y * rect.localScale.y);
     }
 
     private static void Punch(Transform target, float strength)
